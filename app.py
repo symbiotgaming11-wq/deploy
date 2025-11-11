@@ -181,52 +181,57 @@ public class Prac {
     "3.COMPARE TWO RECTANGLES": r"""
 // EXPERIMENT: PROGRAM TO COMPARE TWO RECTANGLES BASED ON AREA AND COLOR
 
-package finale;
 import java.util.Scanner;
 
-class Rectangle {
-    double length, width;
-    String color;
-
-    // Constructor to initialize rectangle properties
-    Rectangle(double l, double w, String c) {
-        length = l;
-        width = w;
-        color = c;
-    }
-
-    // Method to calculate area
-    double area() {
-        return length * width;
-    }
-
-    // Method to check if two rectangles are same
-    boolean isSame(Rectangle r) {
-        // true if both area and color match (case-insensitive)
-        return this.area() == r.area() && this.color.equalsIgnoreCase(r.color);
-    }
+public class rect {
+	int length,width,area;
+	String colour;
+	void getlength() {
+		Scanner sc=new Scanner(System.in);
+		System.out.println("len is ");
+		length= sc.nextInt();
+		sc.close();
+	}	
+	void getwidth() {
+		Scanner sc=new Scanner(System.in);
+		System.out.println("wid is ");
+		width= sc.nextInt();
+		sc.close();
+	}
+	void getcolour() {
+		Scanner sc=new Scanner(System.in);
+		System.out.println("wid is ");
+		colour= sc.next();
+		sc.close();
+	}
+	void area() {
+		area=length*width;
+	}
 }
-
-public class Prac {
-    public static void main(String[] args) {
-        Scanner sc = new Scanner(System.in);
-
-        // Input for first rectangle
-        System.out.print("Enter length, width and color of first rectangle: ");
-        Rectangle r1 = new Rectangle(sc.nextDouble(), sc.nextDouble(), sc.next());
-
-        // Input for second rectangle
-        System.out.print("Enter length, width and color of second rectangle: ");
-        Rectangle r2 = new Rectangle(sc.nextDouble(), sc.nextDouble(), sc.next());
-
-        // Compare both rectangles
-        if (r1.isSame(r2))
-            System.out.println("Rectangles are Matching");
-        else
-            System.out.println("Rectangles are NOT Matching");
-
-        sc.close();
-    }
+class rectd{
+	public static void main(String[] args) {
+		rect r1=new rect();
+		rect r2=new rect();
+		
+		System.out.println("enter rect 1 details");
+		r1.getlength();
+		r1.getwidth();
+		r1.getcolour();
+		r1.area();
+		
+		System.out.println("enter rect 2 details");
+		r2.getlength();
+		r2.getwidth();
+		r2.getcolour();
+		r2.area();
+		
+		if(r1.area==r2.area && r1.colour.equalsIgnoreCase(r2.colour)) {
+			System.out.print("is same");
+		}
+		else {
+			System.out.print("not same");
+		}
+	}
 }
 
 """,
