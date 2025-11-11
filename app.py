@@ -12,651 +12,589 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 PIC_PROGRAMS = {
-    "0": r"""
-    //0
-    //1.ADD
-ORG 0000H
- 
- MOV A, #25H      ; First number
- MOV B, #14H      ; Second number
- ADD A, B         ; A = A + B
- MOV R1, A        ; Store result
- END
-
-//2.SUB
-ORG 0000H
- 
- MOV A, #25H      ; First number
- MOV B, #14H      ; Second number
- CLR C
- SUBB A, B        ; A = A - B
- MOV R2, A        ; Store result
- 
- END
- 
-//3.MUL
-ORG 0000H
-MOV A,#30H
-MOV B,#2H
-MUL AB
-END 
- 
-//4.DIV
-ORG 0000H
-MOV A,#60H
-MOV B,#20H
-DIV AB
-END
-
-//5.16 BIT ADD
-ORG 0000H
-
-; LSB bytes
-MOV A, #01H
-MOV R1, #05H
-ADD A, R1
-MOV 30H, A           ; Store LSB result
-
-; MSB bytes
-MOV A, #30H
-MOV R2, #12H
-ADDC A, R2
-MOV 31H, A           ; Store MSB result
-
-END
-
-
-//6. 16 BIT SUB
-ORG 0000H
-
-CLR C
-
-; LSB bytes
-MOV A, #01H
-MOV R1, #05H
-SUBB A, R1
-MOV 32H, A           ; Store LSB result
-
-; MSB bytes
-MOV A, #30H
-MOV R2, #12H
-SUBB A, R2
-MOV 33H, A           ; Store MSB result
-
-END
-
-//7. ADD BCD
-ORG 0000H
-
-MOV A, #45H      ; BCD number 1
-MOV B, #38H      ; BCD number 2
-ADD A, B
-DA A             ; Decimal adjust
-MOV R4, A        ; Store correct BCD result
-
-END
-
-//8. PACKED BCD TO UNPACKED
-ORG 0000H
-
-MOV A, #58H         ; Packed BCD
-
-; Lower nibble
-ANL A, #0FH
-MOV R1, A
-
-; Upper nibble
-MOV A, #58H
-ANL A, #0F0H
-SWAP A
-MOV R2, A
-
-END
-
-//9. count number of 0's and 1's
-ORG 0000H
-
-MOV A, #97H        ; Example 8-bit number
-MOV R7, #08H       ; Loop counter for 8 bits
-MOV R2, #00H       ; Zero counter
-MOV R3, #00H       ; One counter
-
-BACK:
-    JB ACC.0, ONE  ; If ACC.0 = 1, jump to ONE
-    INC R2         ; Otherwise zero++ 
-    SJMP NEXT
-
-ONE:
-    INC R3         ; One++
-
-NEXT:
-    RR A           ; Rotate right (next bit moves into ACC.0)
-    DJNZ R7, BACK  ; Repeat for all 8 bits
-
-SJMP $
-END
-
-""",
-    "1": r"""
-//1
-//1.move internal ram to gen purpose ram MICRO
-ORG 0000H
- 
- MOV 35H, #'M'
- MOV 36H, #'I'
- MOV 37H, #'C'
- MOV 38H, #'R'
- MOV 39H, #'O'
- 
- MOV R0, #35H     ; Source starting address (35H)
- MOV R1, #60H     ; Destination starting address (60H)
- MOV R2, #05H     ; Number of bytes to transfer (5 characters)
- 
- L:  MOV A, @R0    ; Move data from source (address in R0) to Accumulator
-     MOV @R1, A    ; Move data from Accumulator to destination (address in R1)
-     INC R0        ; Increment source pointer
-     INC R1        ; Increment destination pointer
-     DJNZ R2, L    ; Decrement R2 and repeat until all bytes are moved
- 
- END
-
-//2.move from external to internal in external ram give 1,2,3,4,5 next to 20 then check internal ram 
-        ORG 0000H
- 
-         MOV DPTR, #0020H   ; DPTR -> external memory source address 0020H
-         MOV R0,   #45H     ; R0 -> internal RAM destination starting at 45H
-         MOV R2,   #06H     ; R2 -> byte counter (6 bytes to copy)
- 
- BACK:   MOVX A, @DPTR      ; Read a byte from external memory [DPTR] -> A
-         MOV  @R0, A        ; Write A into internal RAM at address in R0
-         INC  DPTR          ; Next byte in external memory
-         INC  R0            ; Next location in internal RAM
-         DJNZ R2, BACK      ; Decrement R2; if not zero jump back to BACK
- 
-         END
- 
-//3.store str MODERN on rom 200h internal ram reverse it
-ORG 0000H
-
-MOV DPTR, #0200H   ; ROM location of the word "MODERN"
-MOV R0,   #40H     ; Start address in internal RAM
-MOV R1,   #06H     ; Number of characters (6)
-CLR A
-
-L1: CLR A
-    MOVC A, @A+DPTR   ; Read a character from ROM
-    MOV @R0, A        ; Store it in RAM
-    PUSH ACC          ; Push it to stack (for reversal)
-    INC DPTR          ; Next ROM address
-    INC R0            ; Next RAM address
-    DJNZ R1, L1       ; Loop till all bytes copied
-
-MOV R0, #50H          ; Destination for reversed string
-MOV R1, #06H          ; Number of characters to pop
-
-L2: POP ACC            ; Pop last character from stack
-    MOV @R0, A         ; Store reversed order in RAM
-    INC R0
-    DJNZ R1, L2        ; Repeat for all 6 chars
-
-ORG 0200H
-DB 'MODERN'            ; Data stored in code memory
-
-END
-""",
-    "2": r"""
-    //1.WAP to flash LEDS on P2
-#include <REG51.H>
-
-void delay(unsigned int ms) {
-    unsigned int i, j;
-    for(i = 0; i < ms; i++) {
-        for(j = 0; j < 1257; j++);
-    }
-}
-
-void main(void) {
-    while(1) {
-        P2 = 0x00;      // Turn OFF all LEDs connected to Port 2
-        delay(500);     // Wait for 500 ms
-        P2 = 0xFF;      // Turn ON all LEDs connected to Port 2
-        delay(500);     // Wait for 500 ms
-    }
-}
-
-
-//2.WAP to generate rotational pattern on P1
-#include <REG51.H>
-
-void delay(unsigned int ms) {
-    unsigned int i, j;
-    for(i = 0; i < ms; i++) {
-        for(j = 0; j < 1257; j++);
-    }
-}
-
-void main(void) {
-    unsigned char x = 0x01;  // Start with the first LED ON
-    while(1) {
-        P1 = x;              // Output value to Port 1
-        delay(500);          // Wait 500 ms
-        x = x << 1;          // Shift left (next LED ON)
-        if(x == 0x00) {      // When all LEDs have shifted off
-            x = 0x01;        // Reset back to first LED
+    "1FACTORIAL OF NUMBER,FIRST 50 PRIME NUMBERS,SUM AND AVERAGE": r"""
+//FACTORIAL OF NUMBER
+package finale;
+import java.util.Scanner;
+public class Prac {
+	public static void main(String[] args) {
+	Scanner in = new Scanner(System.in);
+        System.out.println("Enter the number to calculate its factorial:");
+        int num = in.nextInt();
+        int i = 1;
+        long fact = 1;
+        while (i <= num) 
+       {    fact = fact * i;
+             i++;
         }
-    }
+System.out.println("Factorial = " + fact);
+		in.close();
+	}
 }
 
+// EXPERIMENT: PROGRAM TO PRINT THE FIRST 50 PRIME NUMBERS
+package finale;
 
+public class Prac {
+    public static void main(String[] args) {
+        int count = 0, num = 2;
 
-//3.WAp to generate zifzag pattern on p2
-#include <REG51.H>
+        while (count < 50) {
+            boolean prime = true;
 
-void delay(unsigned int ms) {
-    unsigned int i, j;
-    for(i = 0; i < ms; i++) {
-        for(j = 0; j < 1257; j++);
-    }
-}
-
-void main(void) {
-    while(1) {
-        P2 = 0xAA;     // 10101010 pattern – alternate LEDs ON/OFF
-        delay(500);    // Wait for 500 ms
-        P2 = 0x55;     // 01010101 pattern – opposite LEDs ON/OFF
-        delay(500);    // Wait for 500 ms
-    }
-}
-
-
-
-//4.WAP to count BCD numbers
-#include <REG51.H>
-
-void delay(unsigned int ms) {
-    unsigned int i, j;
-    for(i = 0; i < ms; i++) {
-        for(j = 0; j < 1257; j++);
-    }
-}
-
-void main(void) {
-    unsigned char bcd;
-    while(1) {
-        for(bcd = 0; bcd < 9; bcd++) {
-            P2 = bcd;        // Output BCD value to Port 2
-            delay(1000);     // 1-second delay
-        }
-    }
-}
-
-
-
-//5.WAP to count HEX(0 TO f)
-#include <REG51.H>
-
-unsigned char str[16] = {
-    0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07,
-    0x7F, 0x6F, 0x3F, 0x7C, 0x39, 0x5E, 0x79, 0x71
-};
-
-void delay(unsigned int ms) {
-    unsigned int i, j;
-    for(i = 0; i < ms; i++) {
-        for(j = 0; j < 1257; j++);
-    }
-}
-
-void main(void) {
-    unsigned char i;
-    while(1) {
-        for(i = 0; i < 16; i++) {
-            P2 = str[i];     // Output pattern to Port 2
-            delay(500);      // Wait for 500 ms
-        }
-    }
-}
-
-
-
-//6.COUNT NUMBER 1 TO 12
-#include <REG51.H>
-
-void delay(unsigned int ms) {
-    unsigned int i, j;
-    for(i = 0; i < ms; i++) {
-        for(j = 0; j < 1257; j++);
-    }
-}
-
-void main(void) {
-    unsigned char count = 0;
-    while(1) {
-        P2 = count;       // Send count value to Port 2
-        delay(500);       // 500 ms delay
-        count++;          // Increment count
-        if(count >= 10)   // If count exceeds 9
-            count = 0;    // Reset back to 0
-    }
-}
-
-
-
-//7.DISPLAY MICRO
-#include <REG51.H>
-
-unsigned char str[5] = {'M', 'I', 'C', 'R', 'O'};
-
-void delay(unsigned int ms) {
-    unsigned int i, j;
-    for(i = 0; i < ms; i++) {
-        for(j = 0; j < 1257; j++);
-    }
-}
-
-void main(void) {
-    unsigned char i;
-    while(1) {
-        for(i = 0; i < 5; i++) {
-            P2 = str[i];     // Send each character to Port 2
-            delay(500);      // Wait for 500 ms
-        }
-    }
-}
-
-
-
-""",
-"3": r"""
-//1.CLOCKWISE STEPPER 
-#include <REG51.H>
-
-unsigned char step_sequence[4] = {0x01, 0x02, 0x04, 0x08};
-
-void delay(unsigned int ms) {
-    unsigned int i, j;
-    for(i = 0; i < ms; i++) {
-        for(j = 0; j < 1257; j++);
-    }
-}
-
-void main(void) {
-    unsigned int i;
-    while(1) {
-        for(i = 0; i < 4; i++) {
-            P1 = step_sequence[i];  // Send step pattern to Port 1
-            delay(5000);            // Delay between steps
-        }
-    }
-}
-
-//2.ANTICLOCKWISE
-#include <REG51.H>
-
-unsigned char step_sequence[4] = {0x08, 0x04, 0x02, 0x01};
-
-void delay(unsigned int ms) {
-    unsigned int i, j;
-    for(i = 0; i < ms; i++) {
-        for(j = 0; j < 1257; j++);
-    }
-}
-
-void main(void) {
-    unsigned int i;
-    while(1) {
-        for(i = 0; i < 4; i++) {
-            P1 = step_sequence[i];  // Send step pattern to Port 1
-            delay(5000);            // Delay between steps
-        }
-    }
-}
-""",
-
-    "4": r"""
-//4
-
-
-
-#include <p18f4520.h>
-#include <delays.h>
-
-#pragma config OSC = HS
-#pragma config WDT = OFF
-#pragma config LVP = OFF
-#pragma config PBADEN = OFF
-
-#define BUZZER PORTAbits.RA3
-#define SWITCH0 PORTBbits.RB0
-#define SWITCH1 PORTBbits.RB1
-
-void main(void)
-{
-    TRISA = 0x00;
-    TRISB = 0xFF;
-    TRISD = 0x00;
-
-    PORTD = 0xFF;
-    BUZZER = 0x00;
-
-    while(1)
-    {
-        if(SWITCH0 == 0)
-        {
-            while(1)
-            {
-                BUZZER = 1;
-                PORTD = 0x37;
-                Delay10KTCYx(100);
-                PORTD = 0x3B;
-                Delay10KTCYx(100);
-                PORTD = 0x3D;
-                Delay10KTCYx(100);
-                PORTD = 0x3E;
-                Delay10KTCYx(100);
-
-                if(SWITCH1 == 0)
+            for (int i = 2; i <= num / 2; i++) {
+                if (num % i == 0) {
+                    prime = false;
                     break;
+                }
             }
-        }
-        else if(SWITCH1 == 0)
-        {
-            while(1)
-            {
-                BUZZER = 0;
-                PORTD = 0xCE;
-                Delay10KTCYx(100);
-                PORTD = 0xCD;
-                Delay10KTCYx(100);
-                PORTD = 0xCB;
-                Delay10KTCYx(100);
-                PORTD = 0xC7;
-                Delay10KTCYx(100);
 
-                if(SWITCH0 == 0)
-                    break;
+            if (prime) {
+                System.out.println(num);
+                count++;
             }
+            num++;
         }
     }
 }
-""",
 
-    
-
-    "6": r"""
-//6
-
-
-#include <p18f4520.h>
-#include <delays.h>
-
-#pragma config OSC = HS
-#pragma config WDT = OFF
-#pragma config LVP = OFF
-#pragma config PBADEN = OFF
-
-#define BUZZER PORTAbits.RA3
-
-unsigned char TimerOnflag = 0;
-
-void Timer0Init(void)
-{
-    T0CON = 0x87;
-    TMR0H = 0xB3;
-    TMR0L = 0xB4;
-
-    RCONbits.IPEN = 1;
-    INTCON = 0xE0;
-    INTCON2bits.TMR0IP = 1;
-}
-
-void TMRISR(void);
-
-#pragma code InterruptVectorHigh = 0x08
-void InterruptVectorHigh(void)
-{
-    _asm
-        goto TMRISR
-    _endasm
-}
-#pragma code
-
-#pragma interrupt TMRISR
-void TMRISR(void)
-{
-    if (INTCONbits.TMR0IF == 1)
-    {
-        INTCONbits.TMR0IF = 0;
-        TMR0H = 0xB3;
-        TMR0L = 0xB4;
-
-        if (TimerOnflag)
-        {
-            PORTD = 0x00;
-            TimerOnflag = 0;
-            BUZZER = 0;
-            Delay10KTCYx(700);
+// EXPERIMENT: PROGRAM TO CALCULATE THE SUM AND AVERAGE OF N NUMBERS
+package finale;
+import java.util.Scanner;
+public class Prac {
+	public static void main(String[] args) {
+		Scanner sc= new Scanner(System.in);
+        System.out.print("How many numbers you want to enter: ");
+        int n = sc.nextInt();
+        int count = 0;
+        double sum = 0;
+        while (count < n) {
+            System.out.print("Enter the number: ");
+            double no = sc.nextDouble();
+            sum += no;
+            count++;
         }
+        double avg = sum / n;
+        System.out.println("Average of " + n + " numbers is " + avg);
+        System.out.println("Sum of " + n + " numbers is " + sum);
+
+	} }
+
+
+""",
+    "2.CALCULATOR": r"""
+//CALCULATOR
+package finale;
+import java.util.Scanner;
+public class Prac {
+
+	public static void main(String[] args) {
+
+				Scanner in = new Scanner(System.in);
+				int choice;
+				int no1, no2, result;
+				
+				do{
+					System.out.println("1.Add");
+					System.out.println("2.Subtract");
+					System.out.println("3.Multiply");
+					System.out.println("4.Divide");
+					System.out.println("5.Factorial");
+					System.out.println("6.Exit");
+					
+					System.out.println("Enter your choice:");
+					choice = in.nextInt();
+					
+					switch(choice){
+					case 1 :
+						System.out.println("Enter First Number");
+						no1 = in.nextInt();
+						
+						System.out.println("Enter Second Number");
+						no2 = in.nextInt();
+						
+						result = no1+no2;
+						
+						System.out.println("Addition : " + result );
+						break;
+					case 2 :
+						System.out.println("Enter First Number");
+						no1 = in.nextInt();
+						
+						System.out.println("Enter Second Number");
+						no2 = in.nextInt();
+						
+						result = no1-no2;
+						
+						System.out.println("Subtraction : " + result );
+						break;
+					case 3 :
+						System.out.println("Enter First Number");
+						no1 = in.nextInt();
+						
+						System.out.println("Enter Second Number");
+						no2 = in.nextInt();
+						
+						result = no1*no2;
+						
+						System.out.println("Multiplication : " + result );
+						break;
+					case 4 :
+						System.out.println("Enter First Number");
+						no1 = in.nextInt();
+						
+						System.out.println("Enter Second Number");
+						no2 = in.nextInt();
+						
+						result = no1/no2;
+						
+						System.out.println("Division : " + result );
+						break;
+					case 5 :
+						System.out.println( "Enter number :");
+						no1 = in.nextInt();
+						
+						result = 1;
+						
+						for(int i =1; i <= no1;++i){
+							result *=i;
+						}
+						
+						System.out.println("Factorial of " + no1 + " is "+result);
+						break;
+										
+					case 6 :
+						System.out.println("Terminating");
+						break;
+					default :
+						System.out.println("Wrong Choice");
+						break;
+					}
+					
+				}while ( choice != 6);
+			
+		}
+
+	}
+
+""",
+    "3.COMPARE TWO RECTANGLES": r"""
+// EXPERIMENT: PROGRAM TO COMPARE TWO RECTANGLES BASED ON AREA AND COLOR
+
+package finale;
+import java.util.Scanner;
+
+class Rectangle {
+    double length, width;
+    String color;
+
+    // Constructor to initialize rectangle properties
+    Rectangle(double l, double w, String c) {
+        length = l;
+        width = w;
+        color = c;
+    }
+
+    // Method to calculate area
+    double area() {
+        return length * width;
+    }
+
+    // Method to check if two rectangles are same
+    boolean isSame(Rectangle r) {
+        // true if both area and color match (case-insensitive)
+        return this.area() == r.area() && this.color.equalsIgnoreCase(r.color);
+    }
+}
+
+public class Prac {
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+
+        // Input for first rectangle
+        System.out.print("Enter length, width and color of first rectangle: ");
+        Rectangle r1 = new Rectangle(sc.nextDouble(), sc.nextDouble(), sc.next());
+
+        // Input for second rectangle
+        System.out.print("Enter length, width and color of second rectangle: ");
+        Rectangle r2 = new Rectangle(sc.nextDouble(), sc.nextDouble(), sc.next());
+
+        // Compare both rectangles
+        if (r1.isSame(r2))
+            System.out.println("Rectangles are Matching");
         else
-        {
-            PORTD = 0xFF;
-            TimerOnflag = 1;
-            BUZZER = 0;
-            Delay10KTCYx(700);
-        }
+            System.out.println("Rectangles are NOT Matching");
+
+        sc.close();
     }
 }
 
-void main(void)
-{
-    Timer0Init();
-    TimerOnflag = 0;
+""",
+"4.METHOD OVERLOADING(BY NUMBER OF ARGUMENTS& BY DATA TYPE),CONSTRUCTOR OVERLOADING": r"""'
+// EXPERIMENT: PROGRAM TO DEMONSTRATE METHOD OVERLOADING (BY NUMBER OF ARGUMENTS)
+package finale;
 
-    TRISD = 0x00;
-    PORTD = 0x00;
-    TRISAbits.TRISA3 = 0;
+class Add {
+    // Method to add two numbers
+    static int add(int a, int b) {
+        return a + b;
+    }
 
-    while (1)
-    {
-        BUZZER = 1;
+    // Method to add three numbers (same name, different parameter count)
+    static int add(int a, int b, int c) {
+        return a + b + c;
+    }
+}
+
+public class Prac {
+    public static void main(String[] args) {
+        System.out.println("Addition of 2 numbers: " + Add.add(10, 20));
+        System.out.println("Addition of 3 numbers: " + Add.add(10, 20, 30));
+    }
+}
+
+
+// EXPERIMENT: PROGRAM TO DEMONSTRATE METHOD OVERLOADING (BY DATA TYPE)
+package finale;
+
+class Add {
+    // Add integers
+    static int add(int a, int b) {
+        return a + b;
+    }
+
+    // Add doubles (same name, different parameter types)
+    static double add(double a, double b) {
+        return a + b;
+    }
+}
+
+public class Prac {
+    public static void main(String[] args) {
+        System.out.println("Addition of integers: " + Add.add(5, 10));
+        System.out.println("Addition of doubles: " + Add.add(2.5, 3.7));
+    }
+}
+
+// EXPERIMENT: PROGRAM TO DEMONSTRATE CONSTRUCTOR OVERLOADING
+
+package finale;
+
+class Student {
+    int roll;
+    String name;
+
+    // Default constructor
+    Student() {
+        roll = 0;
+        name = "Unknown";
+    }
+
+    // Parameterized constructor
+    Student(int r, String n) {
+        roll = r;
+        name = n;
+    }
+
+    // Display student details
+    void display() {
+        System.out.println("Roll: " + roll + ", Name: " + name);
+    }
+}
+
+public class Prac {
+    public static void main(String[] args) {
+        Student s1 = new Student();                // calls default constructor
+        Student s2 = new Student(101, "aahh");   // calls parameterized constructor
+
+        s1.display();
+        s2.display();
     }
 }
 
 """,
 
-    "7_Serial": r"""
-//7
+    "5.SORT NAME,LIST OF INTEGERS": r"""
+// EXPERIMENT: PROGRAM TO SORT NAMES IN ASCENDING ORDER
 
+package finale;
+import java.util.Arrays;
+import java.util.Scanner;
 
-#include <p18f4520.h>
-#include <stdio.h>
-#include <delays.h>
+public class Prac {
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
 
-#pragma config OSC = HS
-#pragma config WDT = OFF
-#pragma config LVP = OFF
+        // Ask how many names user wants to enter
+        System.out.print("Enter number of names: ");
+        int n = sc.nextInt();
+        sc.nextLine(); // Consume leftover newline after integer input
 
-void InitUSART(void)
-{
-    TRISCbits.TRISC6 = 1;   // TX pin input (required for UART module)
-    TRISCbits.TRISC7 = 1;   // RX pin input
+        // Create an array to store names
+        String[] name = new String[n];
 
-    SPBRG = 31;             // 9600 baud @ 20 MHz
-    TXSTA = 0x20;           // Enable transmitter, async mode
-    RCSTAbits.SPEN = 1;     // Enable serial port
-    RCSTAbits.CREN = 1;     // Continuous receive enable
+        // Input all names
+        System.out.println("Enter the names:");
+        for (int i = 0; i < n; i++) {
+            name[i] = sc.nextLine();
+        }
+
+        // Sort names in ascending (alphabetical) order
+        Arrays.sort(name);
+
+        // Display sorted names
+        System.out.println("\nSorted Names:");
+        for (String s : name) {
+            System.out.println(s);
+        }
+
+        sc.close();
+    }
 }
 
-// IMPORTANT: C18 printf expects a function named putch()
-void putch(unsigned char ch)
-{
-    while (!PIR1bits.TXIF);   // Wait until TXREG is empty
-    TXREG = ch;
+
+// EXPERIMENT: PROGRAM TO SORT A LIST OF INTEGERS IN ASCENDING ORDER
+
+package finale;
+import java.util.Arrays;
+import java.util.Scanner;
+
+public class Prac {
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+
+        // Ask how many numbers user wants to enter
+        System.out.print("Enter number of integers: ");
+        int n = sc.nextInt();
+
+        // Create an array to store integers
+        int[] nums = new int[n];
+
+        // Input all numbers
+        System.out.println("Enter the integers:");
+        for (int i = 0; i < n; i++) {
+            nums[i] = sc.nextInt();
+        }
+
+        // Sort integers in ascending order
+        Arrays.sort(nums);
+
+        // Display sorted list
+        System.out.println("\nSorted Integers:");
+        for (int x : nums) {
+            System.out.println(x);
+        }
+
+        sc.close();
+    }
 }
 
-unsigned char getchar(void)
-{
-    while (!PIR1bits.RCIF);   // Wait for received character
-    return RCREG;
-}
+""",
+    "6.ADD TWO MATRICES": r"""
+// EXPERIMENT: PROGRAM TO ADD TWO MATRICES
 
-void main(void)
-{
-    InitUSART();
+package finale;
+import java.util.Scanner;
 
-    printf("Hello PIC18F4520!\r\n");
+public class Prac {
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
 
-    while (1)
-    {
-        putch(getchar());    // Echo UART input
+        System.out.print("Enter rows and columns: ");
+        int r = sc.nextInt();
+        int c = sc.nextInt();
+
+        int[][] A = new int[r][c];
+        int[][] B = new int[r][c];
+        int[][] sum = new int[r][c];
+
+        System.out.println("Enter Matrix A:");
+        for (int i = 0; i < r; i++)
+            for (int j = 0; j < c; j++)
+                A[i][j] = sc.nextInt();
+
+        System.out.println("Enter Matrix B:");
+        for (int i = 0; i < r; i++)
+            for (int j = 0; j < c; j++)
+                B[i][j] = sc.nextInt();
+
+        System.out.println("Sum of matrices:");
+        for (int i = 0; i < r; i++) {
+            for (int j = 0; j < c; j++) {
+                sum[i][j] = A[i][j] + B[i][j];
+                System.out.print(sum[i][j] + "\t");
+            }
+            System.out.println();
+        }
+        sc.close();
     }
 }
 
 """,
 
-    "8_PWM": r"""
-//8
+    "7.INHERITANCE USING PLAYER CLASS": r"""
+// EXPERIMENT: PROGRAM TO DEMONSTRATE INHERITANCE USING PLAYER CLASS
 
+package finale;
+import java.util.Scanner;
 
-#include <p18f4520.h>
-#include <delays.h>
+// Parent class
+class Player {
+    String name;
+    int age;
 
-#pragma config OSC = HS
-#pragma config WDT = OFF
-#pragma config LVP = OFF
-#pragma config PBADEN = OFF
+    // Method to input player details
+    void getData(Scanner sc) {
+        System.out.print("Enter player name: ");
+        name = sc.nextLine();
+        System.out.print("Enter player age: ");
+        age = sc.nextInt();
+        sc.nextLine(); // clear newline
+    }
 
-void main(void)
-{
-    unsigned char dc;
-
-    TRISC = 0;
-    PORTC = 0;
-
-    PR2 = 0b01111100;
-    T2CON = 0b00000101;
-    CCP1CON = 0b00001100;
-    CCP2CON = 0b00111100;
-
-    for (;;)
-    {
-        for (dc = 0; dc < 128; dc++)
-        {
-            CCPR1L = dc;
-            CCPR2L = 128 - dc;
-            Delay10KTCYx(50);
-        }
-
-        for (dc = 127; dc > 0; dc--)
-        {
-            CCPR1L = dc;
-            CCPR2L = 128 - dc;
-            Delay10KTCYx(50);
-        }
+    // Method to display player details
+    void display() {
+        System.out.println("Name: " + name);
+        System.out.println("Age: " + age);
     }
 }
 
-"""
+// Child class 1: Cricket player
+class Cricket_player extends Player {
+    String role;
+
+    void getCricketData(Scanner sc) {
+        System.out.print("Enter cricket role (Batsman/Bowler/All-rounder): ");
+        role = sc.nextLine();
+    }
+
+    void showCricketPlayer() {
+        System.out.println("\n--- Cricket Player Details ---");
+        display();
+        System.out.println("Role: " + role);
+    }
+}
+
+// Child class 2: Football player
+class Football_player extends Player {
+    String position;
+
+    void getFootballData(Scanner sc) {
+        System.out.print("Enter football position (Goalkeeper/Striker/etc): ");
+        position = sc.nextLine();
+    }
+
+    void showFootballPlayer() {
+        System.out.println("\n--- Football Player Details ---");
+        display();
+        System.out.println("Position: " + position);
+    }
+}
+
+// Child class 3: Hockey player
+class Hockey_player extends Player {
+    String fieldPosition;
+
+    void getHockeyData(Scanner sc) {
+        System.out.print("Enter hockey field position: ");
+        fieldPosition = sc.nextLine();
+    }
+
+    void showHockeyPlayer() {
+        System.out.println("\n--- Hockey Player Details ---");
+        display();
+        System.out.println("Field Position: " + fieldPosition);
+    }
+}
+
+// Main class
+public class Prac {
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+
+        // Cricket player
+        Cricket_player c = new Cricket_player();
+        System.out.println("\nEnter Cricket Player details:");
+        c.getData(sc);
+        c.getCricketData(sc);
+
+        // Football player
+        Football_player f = new Football_player();
+        System.out.println("\nEnter Football Player details:");
+        f.getData(sc);
+        f.getFootballData(sc);
+
+        // Hockey player
+        Hockey_player h = new Hockey_player();
+        System.out.println("\nEnter Hockey Player details:");
+        h.getData(sc);
+        h.getHockeyData(sc);
+
+        // Display all players
+        c.showCricketPlayer();
+        f.showFootballPlayer();
+        h.showHockeyPlayer();
+
+        sc.close();
+    }
+}
+
+""",
+
+    "9.EXCEPTION HANDLING": r"""
+// EXPERIMENT:EXCEPTION HANDLING(TRY AND CATCH)
+
+package finale;
+import java.util.Scanner; 
+public class Prac { 
+public static void main(String[] args) { 
+Scanner a= new Scanner(System.in); 
+try { 
+System.out.println("Enter numerator:"); 
+int n= a.nextInt(); 
+System.out.println("Enter denominator:"); 
+int m= a.nextInt(); 
+int result= n/m; 
+System.out.println("Result:" + result); 
+} catch(ArithmeticException E) { 
+System.out.println("Cannot divide by zero"); 
+} 
+a.close(); 
+} 
+} 
+""",
+    "10.File Handling": r"""
+//Program to demonstrate File Handling using FileWriter and FileReader
+
+package finale;// FileExample.java
+
+import java.io.*;
+
+public class Prac {
+ public static void main(String[] args) {
+     try {
+         // Writing data to a file
+         FileWriter fw = new FileWriter("sample.txt");
+         fw.write("Hello, this is a FileWriter and FileReader example in Java.\n");
+         fw.write("File handling allows reading and writing data to files easily.");
+         fw.close();
+         System.out.println(" Data successfully written to file: sample.txt");
+
+         // Reading data from the same file
+         FileReader fr = new FileReader("sample.txt");
+         int i;
+         System.out.println("\n Reading data from file:");
+         while ((i = fr.read()) != -1) {
+             System.out.print((char) i);
+         }
+         fr.close();
+     } 
+     catch (IOException e) {
+         System.out.println(" An error occurred: " + e.getMessage());
+     }
+ }
+}
+""",
 }
 
 st.sidebar.title("-")
